@@ -29,36 +29,38 @@
 - **노드 역할 구분**: 풀노드 외에도 채굴 전용 노드(채굴 소프트웨어 + 마이너), 단순 지갑 노드(SPV, 라이트 노드) 등 목적에 따라 구현 세부가 달라집니다.
 - **체인 분기와 합의**: 두 노드가 동시에 블록을 채굴하면 잠시 체인이 갈라질 수 있습니다. 가장 긴(또는 누적 난이도가 높은) 체인을 따르는 규칙이 있어 결국 하나로 합쳐집니다.
 
-## 6. 블록 생성 흐름 (Mermaid 다이어그램)
+## 6. 블록체인 구조 개념도
 
 ```mermaid
-flowchart LR
-    subgraph Chain["확정된 블록체인 (수정 불가)"]
-        B0["Block 0 (Genesis)"]
-        B1["Block 1"]
-        B2["Block 2"]
+graph TB
+    subgraph Layer0["확정된 체인"]
+        G0["Block 0 (Genesis)"]
+        G1["Block 1"]
+        G2["Block 2"]
+        G3["Block 3"]
     end
 
-    TX["새로운 거래 발생"]
-    MEMPOOL["메모풀(후보 트랜잭션 모음)"]
-    CANDIDATE["후보 블록 구성"]
-    POW["Proof-of-Work\n난이도 충족 해시 탐색"]
-    NEWBLOCK["새 블록 생성"]
+    subgraph Layer1["거래 기록 (예시)"]
+        G0 -->|Merkle root| T0A["Tx A"]
+        G0 -->|Merkle root| T0B["Tx B"]
+        G1 -->|Merkle root| T1A["Tx C"]
+        G1 -->|Merkle root| T1B["Tx D"]
+        G2 -->|Merkle root| T2A["Tx E"]
+        G2 -->|Merkle root| T2B["Tx F"]
+        G3 -->|Merkle root| T3A["Tx G"]
+        G3 -->|Merkle root| T3B["Tx H"]
+    end
 
-    B0 --> B1 --> B2
-    TX --> MEMPOOL --> CANDIDATE --> POW --> NEWBLOCK --> Chain
+    Pending["Pending Transactions<br/>(메모풀)"]
+    Miner["Mining Node<br/>Nonce 조정 / 해시 계산"]
+    Candidate["후보 블록"]
 
-    note right of Chain
-        기존 블록들은 확정 상태로,
-        이후 수정하거나 트랜잭션을
-        더 추가할 수 없다.
-    end note
-
-    note bottom of POW
-        nonce를 바꿔가며 목표 난이도를
-        만족하는 해시를 찾는다.
-    end note
+    Pending --> Candidate --> Miner --> G3
+    G0 -->|Prev Hash| G1 -->|Prev Hash| G2 -->|Prev Hash| G3
 ```
 
+- 체인 상단의 블록들은 서로 `Prev Hash`로 연결되어 연속성을 유지합니다.
+- 각 블록은 내부 거래 목록(머클 트리)을 요약해 머클 루트만 헤더에 기록합니다.
+- 아직 확정되지 않은 트랜잭션은 메모풀에 모였다가 채굴 노드가 후보 블록을 만들어 체인 끝에 추가합니다.
 - 확정된 체인(`Chain`)은 과거 블록이 서로 해시로 연결되어 변경이 매우 어렵습니다.
 - 새 거래는 메모풀에 쌓이고, 마이너가 후보 블록을 만들어 PoW를 통과하면 `NEWBLOCK`이 체인의 끝에 붙습니다.
