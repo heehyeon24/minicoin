@@ -1,0 +1,16 @@
+@baseUrl = http://localhost:8080
+
+***
+
+### 전체 블록 요약 조회
+GET {{baseUrl}}/api/blocks
+Accept: application/json
+
+***
+
+###
+### 특정 해시 블록 세부 정보 조회
+# @blockHash 제네시스 또는 실제 블록 해시 값으로 치환하세요.
+@blockHash = d42bedc5aacc88c5b3b0a99be633eba11f86bc8ccad57804e806e3d3a24fbe75
+GET {{baseUrl}}/api/blocks/{{blockHash}}
+Accept: application/json
