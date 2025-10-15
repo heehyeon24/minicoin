@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.springframework.stereotype.Service;
 
@@ -19,19 +20,95 @@ import study.cryptochain.minicoin.model.Transaction;
 public class BlockchainService {
 
     private final List<Block> chain;
+    private final Block genesisBlock;
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     public BlockchainService() {
-        this.chain = List.copyOf(initializeChain());
+        List<Block> initialChain = initializeChain();
+        this.genesisBlock = initialChain.getFirst();
+        this.chain = new ArrayList<>(initialChain);
     }
 
     public List<Block> getBlocks() {
-        return chain;
+        lock.readLock().lock();
+        try {
+            return List.copyOf(chain);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public Optional<Block> findBlockByHash(String hash) {
-        return chain.stream()
-                .filter(block -> block.hash().equalsIgnoreCase(hash))
-                .findFirst();
+        lock.readLock().lock();
+        try {
+            return chain.stream()
+                    .filter(block -> block.hash().equalsIgnoreCase(hash))
+                    .findFirst();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public boolean addBlock(Block candidate) {
+        lock.writeLock().lock();
+        try {
+            Block lastBlock = chain.getLast();
+            if (candidate.index() != lastBlock.index() + 1) {
+                return false;
+            }
+            if (!candidate.previousHash().equals(lastBlock.hash())) {
+                return false;
+            }
+            if (!calculateHash(candidate).equals(candidate.hash())) {
+                return false;
+            }
+            chain.add(copyBlock(candidate));
+            return true;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    public boolean replaceChainIfValid(List<Block> candidateChain) {
+        if (!isValidChain(candidateChain)) {
+            return false;
+        }
+        lock.writeLock().lock();
+        try {
+            if (candidateChain.size() <= chain.size()) {
+                return false;
+            }
+            chain.clear();
+            candidateChain.stream()
+                    .map(this::copyBlock)
+                    .forEach(chain::add);
+            return true;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    public boolean isValidChain(List<Block> candidateChain) {
+        if (candidateChain == null || candidateChain.isEmpty()) {
+            return false;
+        }
+        if (!candidateChain.getFirst().equals(genesisBlock)) {
+            return false;
+        }
+        for (int i = 1; i < candidateChain.size(); i++) {
+            Block previous = candidateChain.get(i - 1);
+            Block current = candidateChain.get(i);
+            if (current.index() != previous.index() + 1) {
+                return false;
+            }
+            if (!current.previousHash().equals(previous.hash())) {
+                return false;
+            }
+            if (!calculateHash(current).equals(current.hash())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private List<Block> initializeChain() {
@@ -76,6 +153,17 @@ public class BlockchainService {
         return blocks;
     }
 
+    private Block copyBlock(Block block) {
+        return new Block(
+                block.index(),
+                block.timestamp(),
+                block.previousHash(),
+                block.hash(),
+                block.nonce(),
+                block.transactions()
+        );
+    }
+
     private Block buildBlock(int index,
                              Instant timestamp,
                              String previousHash,
@@ -83,6 +171,16 @@ public class BlockchainService {
                              List<Transaction> transactions) {
         String hash = calculateHash(index, timestamp, previousHash, nonce, transactions);
         return new Block(index, timestamp, previousHash, hash, nonce, transactions);
+    }
+
+    private String calculateHash(Block block) {
+        return calculateHash(
+                block.index(),
+                block.timestamp(),
+                block.previousHash(),
+                block.nonce(),
+                block.transactions()
+        );
     }
 
     private String calculateHash(int index,

@@ -14,3 +14,62 @@ Accept: application/json
 @blockHash = d42bedc5aacc88c5b3b0a99be633eba11f86bc8ccad57804e806e3d3a24fbe75
 GET {{baseUrl}}/api/blocks/{{blockHash}}
 Accept: application/json
+
+***
+
+### 노드 체인 스냅샷 조회
+GET {{baseUrl}}/api/nodes/chain
+Accept: application/json
+
+***
+
+### 새 블록 브로드캐스트 수신 (테스트용)
+POST {{baseUrl}}/api/nodes/blocks
+Content-Type: application/json
+
+{
+  "originNodeId": "peer-1",
+  "block": {
+    "index": 3,
+    "timestamp": "2024-01-01T00:12:00Z",
+    "previousHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "nonce": 1,
+    "transactions": [
+      {
+        "txId": "tx-sample-1",
+        "sender": "alice",
+        "recipient": "bob",
+        "amount": 1.23
+      }
+    ]
+  }
+}
+
+***
+
+### 즉시 피어 동기화 트리거
+POST {{baseUrl}}/api/nodes/sync
+Accept: application/json
+
+***
+
+### 특정 블록을 피어로 브로드캐스트
+POST {{baseUrl}}/api/nodes/broadcast
+Content-Type: application/json
+
+{
+  "index": 3,
+  "timestamp": "2024-01-01T00:12:00Z",
+  "previousHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "nonce": 1,
+  "transactions": [
+    {
+      "txId": "tx-sample-1",
+      "sender": "alice",
+      "recipient": "bob",
+      "amount": 1.23
+    }
+  ]
+}
